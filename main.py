@@ -1,4 +1,6 @@
+import os
 import pathlib
+import time
 
 import cv2
 
@@ -25,14 +27,26 @@ def img_to_ascii(image, width):
     return data
 
 
+def extract_frames(video):
+    while True:
+        success, image = video.read()
+        if not success:
+            break
+        yield image
+
+
 def main():
     wd = pathlib.Path().resolve()
     image_path = pathlib.Path(wd).parent.parent.resolve()
-    image_file = "{0}\\{1}".format(image_path, "fr.jpg")
-    image = cv2.imread(image_file)
 
-    data = img_to_ascii(image, 200)
-    print(data)
+    video_file = "{0}\\{1}".format(image_path, "Me-at-the-zoo-YouTube.mp4")
+    print(video_file)
+    video = cv2.VideoCapture(video_file)
+    for img in extract_frames(video):
+        os.system("cls")
+        print(img_to_ascii(img, 100))
+        time.sleep(0.02)
+    print("end")
 
 
 main()
