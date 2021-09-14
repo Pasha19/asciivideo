@@ -33,6 +33,44 @@ def extract_frames(video):
         yield image
 
 
+def encode_single_frame(frame):
+    width = frame.find('\n')
+    height = len(frame) // (width + 1)
+
+    encoded_frame = ""
+    c = 0
+    for i in range(height):
+        prev = frame[c]
+        c += 1
+        row = ""
+        seq = 1
+        for j in range(1, width + 1):
+            s = frame[c]
+            c += 1
+            if s == prev:
+                seq += 1
+            else:
+                row += prev
+                if seq == 2:
+                    row += prev
+                elif seq > 2:
+                    row += str(seq)
+                seq = 1
+                prev = s
+        encoded_frame += row + "\n"
+    return encoded_frame
+
+
+def encode_frame_diff(frame1, frame2):
+    result = ""
+    for i in range(len(frame1)):
+        if frame1[i] != "\n" and frame1[i] == frame2[i]:
+            result += "="
+        else:
+            result += frame2[i]
+    return result
+
+
 def main():
     wd = pathlib.Path().resolve()
     image_path = pathlib.Path(wd).parent.parent.resolve()
@@ -40,12 +78,20 @@ def main():
     video_file = "{0}\\{1}".format(image_path, "Me-at-the-zoo-YouTube.mp4")
     video = cv2.VideoCapture(video_file)
 
-    output = open("{0}\\{1}".format(image_path, "result.txt"), "w")
+    output = open("{0}\\{1}".format(image_path, "result_diff.txt"), "w")
+    prev_frame = None
+    width = 100
     for img in extract_frames(video):
-        frame = img_to_ascii(img, 100)
-        output.write("{:06d}\n".format(len(frame)))
-        output.write(frame)
+        frame = img_to_ascii(img, width)
+        if prev_frame is None:
+            encoded = encode_single_frame(frame)
+        else:
+            encoded = encode_single_frame(encode_frame_diff(prev_frame, frame))
+        output.write("{:06d}\n".format(len(encoded)))
+        output.write(encoded)
+        prev_frame = frame
     output.close()
+    video.release()
 
 
 main()
