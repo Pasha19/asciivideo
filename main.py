@@ -1,6 +1,4 @@
-import os
 import pathlib
-import time
 
 import cv2
 
@@ -40,13 +38,14 @@ def main():
     image_path = pathlib.Path(wd).parent.parent.resolve()
 
     video_file = "{0}\\{1}".format(image_path, "Me-at-the-zoo-YouTube.mp4")
-    print(video_file)
     video = cv2.VideoCapture(video_file)
+
+    output = open("{0}\\{1}".format(image_path, "result.txt"), "w")
     for img in extract_frames(video):
-        os.system("cls")
-        print(img_to_ascii(img, 100))
-        time.sleep(0.02)
-    print("end")
+        frame = img_to_ascii(img, 100)
+        output.write("{:06d}\n".format(len(frame)))
+        output.write(frame)
+    output.close()
 
 
 main()
