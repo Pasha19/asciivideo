@@ -1,8 +1,10 @@
-import os
-import pathlib
 import time
+import sys
 
 import cv2
+
+
+ASCII_CHARS = ['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.']
 
 
 def img_to_ascii(image, width):
@@ -16,13 +18,13 @@ def img_to_ascii(image, width):
 
     width = gray.shape[1]
     height = gray.shape[0]
-    ASCII_CHARS = ['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.']
 
     data = ""
+    d = 255 // len(ASCII_CHARS) + 1 if 255 % len(ASCII_CHARS) != 0 else 0
     for i in range(height):
         row = ""
         for j in range(width):
-            row += ASCII_CHARS[gray[i, j] // 25]
+            row += ASCII_CHARS[gray[i, j] // d]
         data += row + "\n"
     return data
 
@@ -107,33 +109,28 @@ def restore_frame_diff(frame1, frame2):
     return result
 
 
-def main():
-    wd = pathlib.Path().resolve()
-    image_path = pathlib.Path(wd).parent.parent.resolve()
-    #
-    # video_file = "{0}\\{1}".format(image_path, "Me-at-the-zoo-YouTube.mp4")
-    # video = cv2.VideoCapture(video_file)
-    #
-    # output = open("{0}\\{1}".format(image_path, "result_diff.txt"), "w")
-    # prev_frame = None
-    # width = 100
-    # for img in extract_frames(video):
-    #     frame = img_to_ascii(img, width)
-    #     if prev_frame is None:
-    #         encoded = encode_single_frame(frame)
-    #     else:
-    #         encoded = encode_single_frame(encode_frame_diff(prev_frame, frame))
-    #     output.write("{:06d}\n".format(len(encoded)))
-    #     output.write(encoded)
-    #     prev_frame = frame
-    # output.close()
-    # video.release()
+def encode(video_input, output, width):
+    video = cv2.VideoCapture(video_input)
+    ascii = open(output, "w")
+    prev_frame = None
+    for img in extract_frames(video):
+        frame = img_to_ascii(img, width)
+        if prev_frame is None:
+            encoded = encode_single_frame(frame)
+        else:
+            encoded = encode_single_frame(encode_frame_diff(prev_frame, frame))
+        ascii.write("{:06d}\n".format(len(encoded)))
+        ascii.write(encoded)
+        prev_frame = frame
+    ascii.close()
+    video.release()
 
-    text_path = "{0}\\{1}".format(image_path, "result_diff.txt")
+
+def play(ascii_input):
     frame0 = ""
-    with open(text_path) as f:
+    with open(ascii_input) as f:
         for frame in read_by_frames(f):
-            os.system('cls')
+            print("\n"*100)
             frame = restore_frame(frame)
             frame = restore_frame_diff(frame0, frame)
             print(frame)
@@ -141,4 +138,13 @@ def main():
             time.sleep(0.04)
 
 
-main()
+def main():
+    args = sys.argv[1:]
+    if args[0] == "encode":
+        encode(args[1], args[2], int(args[3]))
+    elif args[0] == "play":
+        play(args[1])
+
+
+if __name__ == '__main__':
+    main()
