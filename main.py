@@ -7,6 +7,13 @@ import cv2
 ASCII_CHARS = ['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.']
 
 
+def ascii_char_to_int():
+    chars_map = {'=' : 0}
+    for i in range(len(ASCII_CHARS)):
+        chars_map[ASCII_CHARS[i]] = i + 1
+    return chars_map
+
+
 def img_to_ascii(image, width):
     orig_width = image.shape[1]
     orig_height = image.shape[0]
@@ -41,12 +48,12 @@ def encode_single_frame(frame):
     width = frame.find('\n')
     height = len(frame) // (width + 1)
 
-    encoded_frame = ""
+    ascii_map = ascii_char_to_int()
     c = 0
+    row = b""
     for i in range(height):
         prev = frame[c]
         c += 1
-        row = ""
         seq = 1
         for j in range(1, width + 1):
             s = frame[c]
@@ -54,15 +61,15 @@ def encode_single_frame(frame):
             if s == prev:
                 seq += 1
             else:
-                row += prev
-                if seq == 2:
-                    row += prev
-                elif seq > 2:
-                    row += str(seq)
+                symbol = ascii_map[prev]
+                if seq < 16:
+                    symbol |= (seq << 4)
+                row += symbol.to_bytes(1, 'big')
+                if seq >= 16:
+                    row += seq.to_bytes(1, 'big')
                 seq = 1
                 prev = s
-        encoded_frame += row + "\n"
-    return encoded_frame
+    return row
 
 
 def encode_frame_diff(frame1, frame2):
@@ -77,27 +84,30 @@ def encode_frame_diff(frame1, frame2):
 
 def read_by_frames(file):
     while True:
-        read = file.read(7)
+        read = int.from_bytes(file.read(2), "big")
         if not read:
             break
-        size_to_read = int(read.strip().lstrip("0"))  # 6 + LF
-        frame_data = file.read(size_to_read)
+        frame_data = file.read(read)
         yield frame_data
 
 
-def restore_frame(frame):
+def restore_frame(frame, width):
     result = ""
-    digits = list(map(str, range(0, 10)))
-    cnt = 0
-    p = frame[0]
-    for i in range(1, len(frame)):
-        c = frame[i]
-        if c in digits:
-            cnt = cnt * 10 + int(c)
-        else:
-            result += p if cnt == 0 else cnt * p
-            p = c
-            cnt = 0
+    size = len(frame)
+    i = 0
+    read = 0
+    symbols = ['='] + ASCII_CHARS
+    while i < size:
+        sym = symbols[frame[i] & 0xf]
+        seq = frame[i] >> 4
+        if seq == 0:
+            i += 1
+            seq = frame[i]
+        result += sym * seq
+        read += seq
+        if read % width == 0:
+            result += '\n'
+        i += 1
     return result
 
 
@@ -111,7 +121,8 @@ def restore_frame_diff(frame1, frame2):
 
 def encode(video_input, output, width):
     video = cv2.VideoCapture(video_input)
-    ascii = open(output, "w")
+    ascii = open(output, "wb")
+    ascii.write(width.to_bytes(2, "big"))
     prev_frame = None
     for img in extract_frames(video):
         frame = img_to_ascii(img, width)
@@ -119,7 +130,7 @@ def encode(video_input, output, width):
             encoded = encode_single_frame(frame)
         else:
             encoded = encode_single_frame(encode_frame_diff(prev_frame, frame))
-        ascii.write("{:06d}\n".format(len(encoded)))
+        ascii.write(len(encoded).to_bytes(2, "big"))
         ascii.write(encoded)
         prev_frame = frame
     ascii.close()
@@ -128,10 +139,11 @@ def encode(video_input, output, width):
 
 def play(ascii_input):
     frame0 = ""
-    with open(ascii_input) as f:
+    with open(ascii_input, "rb") as f:
+        width = int.from_bytes(f.read(2), "big")
         for frame in read_by_frames(f):
             print("\n"*100)
-            frame = restore_frame(frame)
+            frame = restore_frame(frame, width)
             frame = restore_frame_diff(frame0, frame)
             print(frame)
             frame0 = frame
