@@ -17,8 +17,8 @@
     </style>
 </head>
 <body>
-<button onclick="play(data, document.getElementById('player'))">play</button>
-<input type="file" id="upload">
+<!-- button onclick="play(data, document.getElementById('player'))">play</button -->
+<!-- input type="file" id="upload" -->
 <div></div>
 <div id="player"></div>
 <script>
@@ -92,6 +92,7 @@
         let resp = await fetch('/asciivideo/rick.bin')
         let tmp = await resp.arrayBuffer()
         data = new Uint8Array(tmp)
+        play(data, document.getElementById('player'))
     })();
 </script>
 </body>
