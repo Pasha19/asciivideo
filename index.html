@@ -76,7 +76,7 @@
         return result
     }
 
-    document.getElementById('upload').addEventListener('change', function (event) {
+    /*document.getElementById('upload').addEventListener('change', function (event) {
         const file = event.currentTarget.files[0]
         const reader = new FileReader()
         reader.addEventListener('load', function (event) {
@@ -84,7 +84,7 @@
             data = new Uint8Array(buffer);
         });
         reader.readAsArrayBuffer(file);
-    })
+    })*/
 </script>
 <script>
     let data = null;
